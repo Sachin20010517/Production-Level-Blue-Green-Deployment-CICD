@@ -2,7 +2,10 @@
 
 ### Creating Service Account
 
-
+>Note: Make sure to create a namespace which is called webapps before executing following yaml.
+```
+kubectl create ns webapps
+```
 ```yaml
 apiVersion: v1
 kind: ServiceAccount
