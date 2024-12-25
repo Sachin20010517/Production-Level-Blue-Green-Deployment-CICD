@@ -6,6 +6,9 @@
 ```
 kubectl create ns webapps
 ```
+```
+nano sa.yml
+```
 ```yaml
 apiVersion: v1
 kind: ServiceAccount
@@ -14,9 +17,14 @@ metadata:
   namespace: webapps
 ```
 
+```
+kubectl apply -f sa.yml
+```
 ### Create Role 
 
-
+```
+nano role.yml
+```
 ```yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -57,10 +65,15 @@ rules:
       - services
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
 ```
+```
+kubectl apply -f role.yml
+```
 
 ### Bind the role to service account
 
-
+```
+nano rolebind.yml
+```
 ```yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -76,7 +89,35 @@ subjects:
   kind: ServiceAccount
   name: jenkins 
 ```
+```
+kubectl apply -f rolebind.yml
+```
 
+### Generate token using service account in the namespace
+
+[Reference](https://kubernetes.io/docs/reference/access-authn-authz/service-accounts-admin/#:~:text=To%20create%20a%20non%2Dexpiring,with%20that%20generated%20token%20data.)
+
+```
+nano sec.yml
+```
+```yaml
+apiVersion: v1
+kind: Secret
+type: kubernetes.io/service-account-token
+metadata:
+  name: mysecretname
+  annotations:
+    kubernetes.io/service-account.name: jenkins
+```
+```
+kubectl apply -f sec.yml -n webapps
+```
+>Note: Make sure to add namespace with the command
+Now we can create a token to authentication
+```
+kubectl describe secret mysecretname -n webapps
+```
+>Note: After generating the token, make sure to paste the token in the jenkins
 
 ### Create a ClusterRole for PV access
 
@@ -111,6 +152,4 @@ roleRef:
 ```
 
 
-### Generate token using service account in the namespace
 
-[Create Token](https://kubernetes.io/docs/reference/access-authn-authz/service-accounts-admin/#:~:text=To%20create%20a%20non%2Dexpiring,with%20that%20generated%20token%20data.)
