@@ -119,37 +119,5 @@ kubectl describe secret mysecretname -n webapps
 ```
 >Note: After generating the token, make sure to paste the token in the jenkins
 
-### Create a ClusterRole for PV access
-
-```yaml
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: persistent-volume-access
-rules:
-  - apiGroups: [""]
-    resources: ["persistentvolumes"]
-    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-
-```
-
-### Bind the clusterRole to Jenkins Service Account
-
-```yaml
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: jenkins-persistent-volume-access
-subjects:
-  - kind: ServiceAccount
-    name: jenkins
-    namespace: webapps
-roleRef:
-  kind: ClusterRole
-  name: persistent-volume-access
-  apiGroup: rbac.authorization.k8s.io
-
-```
-
 
 
