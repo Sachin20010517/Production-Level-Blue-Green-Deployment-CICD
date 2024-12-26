@@ -2,7 +2,7 @@ pipeline {
     agent any
     
     tools {
-        maven: 'maven3'
+        maven 'maven3'
     }
     
     parameters {
@@ -118,11 +118,13 @@ pipeline {
         stage('Deploy SVC-APP') {
             steps {
                 script {
-                    withKubeConfig(caCertificate: '', clusterName: 'iam-sachin-cluster', contextName: '', credentialsId: 'k8-token', namespace: 'webapps', restrictKubeConfigAccess: false, serverUrl: 'https://46743932FDE6B34C74566F392E30CABA.gr7.ap-south-1.eks.amazonaws.com') {
+                    withKubeConfig(caCertificate: '', clusterName: 'iam-sachin-cluster', contextName: '', credentialsId: 'k8-token', namespace: 'webapps', restrictKubeConfigAccess: false, serverUrl: 'https://03E11B3EF4B50C2011F448351238F790.gr7.us-east-1.eks.amazonaws.com') {
                         sh """ if ! kubectl get svc bankapp-service -n ${KUBE_NAMESPACE}; then
                                 kubectl apply -f bankapp-service.yml -n ${KUBE_NAMESPACE}
                               fi
                         """
+                        //Note! :- Make sure to change serverUrl of your K8s cluster. For that go to Amazon Elastic Kubernetes Service Dashboard > select the cluster > copy the "API server endpoint" 
+
                    }
                 }
             }
@@ -138,15 +140,17 @@ pipeline {
                         deploymentFile = 'app-deployment-green.yml'
                     }
 
-                    withKubeConfig(caCertificate: '', clusterName: 'iam-sachin-cluster', contextName: '', credentialsId: 'k8-token', namespace: 'webapps', restrictKubeConfigAccess: false, serverUrl: 'https://46743932FDE6B34C74566F392E30CABA.gr7.ap-south-1.eks.amazonaws.com') {
+                    withKubeConfig(caCertificate: '', clusterName: 'iam-sachin-cluster', contextName: '', credentialsId: 'k8-token', namespace: 'webapps', restrictKubeConfigAccess: false, serverUrl: 'https://03E11B3EF4B50C2011F448351238F790.gr7.us-east-1.eks.amazonaws.com') {
                         sh "kubectl apply -f ${deploymentFile} -n ${KUBE_NAMESPACE}"
+                        //Note! :- Make sure to change serverUrl of your K8s cluster. For that go to Amazon Elastic Kubernetes Service Dashboard > select the cluster > copy the "API server endpoint" 
+
                     }
                 }
             }
         }
         
         stage('Switch Traffic Between Blue & Green Environment') {
-            when {
+            when {             //This block will make sure to run this stage only if switch traffic parameter or switch traffic is enabled
                 expression { return params.SWITCH_TRAFFIC }
             }
             steps {
@@ -154,12 +158,14 @@ pipeline {
                     def newEnv = params.DEPLOY_ENV
 
                     // Always switch traffic based on DEPLOY_ENV
-                    withKubeConfig(caCertificate: '', clusterName: 'iam-sachin-cluster', contextName: '', credentialsId: 'k8-token', namespace: 'webapps', restrictKubeConfigAccess: false, serverUrl: 'https://46743932FDE6B34C74566F392E30CABA.gr7.ap-south-1.eks.amazonaws.com') {
+                    withKubeConfig(caCertificate: '', clusterName: 'iam-sachin-cluster', contextName: '', credentialsId: 'k8-token', namespace: 'webapps', restrictKubeConfigAccess: false, serverUrl: 'https://03E11B3EF4B50C2011F448351238F790.gr7.us-east-1.eks.amazonaws.com') {
                         sh '''
                             kubectl patch service bankapp-service -p "{\\"spec\\": {\\"selector\\": {\\"app\\": \\"bankapp\\", \\"version\\": \\"''' + newEnv + '''\\"}}}" -n ${KUBE_NAMESPACE}
                         '''
                     }
                     echo "Traffic has been switched to the ${newEnv} environment."
+                    //Note! :- Make sure to change serverUrl of your K8s cluster. For that go to Amazon Elastic Kubernetes Service Dashboard > select the cluster > copy the "API server endpoint" 
+
                 }
             }
         }
@@ -168,7 +174,8 @@ pipeline {
             steps {
                 script {
                     def verifyEnv = params.DEPLOY_ENV
-                    withKubeConfig(caCertificate: '', clusterName: 'iam-sachin-cluster', contextName: '', credentialsId: 'k8-token', namespace: 'webapps', restrictKubeConfigAccess: false, serverUrl: 'https://46743932FDE6B34C74566F392E30CABA.gr7.ap-south-1.eks.amazonaws.com') {
+                    withKubeConfig(caCertificate: '', clusterName: 'iam-sachin-cluster', contextName: '', credentialsId: 'k8-token', namespace: 'webapps', restrictKubeConfigAccess: false, serverUrl: 'https://03E11B3EF4B50C2011F448351238F790.gr7.us-east-1.eks.amazonaws.com') {
+                    //Note! :- Make sure to change serverUrl of your K8s cluster. For that go to Amazon Elastic Kubernetes Service Dashboard > select the cluster > copy the "API server endpoint" 
                         sh """
                         kubectl get pods -l version=${verifyEnv} -n ${KUBE_NAMESPACE}
                         kubectl get svc bankapp-service -n ${KUBE_NAMESPACE}
@@ -180,8 +187,5 @@ pipeline {
         
         
     }
-    
-  
-    
-   
+       
 }
