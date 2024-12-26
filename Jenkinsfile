@@ -1,6 +1,10 @@
 pipeline {
     agent any
     
+    tools {
+        maven: 'maven3'
+    }
+    
     parameters {
         choice(name: 'DEPLOY_ENV', choices: ['blue', 'green'], description: 'Choose which environment to deploy: Blue or Green')
         choice(name: 'DOCKER_TAG', choices: ['blue', 'green'], description: 'Choose the Docker image tag for the deployment')
@@ -8,7 +12,7 @@ pipeline {
     }
     
     environment {
-        IMAGE_NAME = "adijaiswal/bankapp"
+        IMAGE_NAME = "sachinayeshmantha/blue-green-deployment-demo"
         TAG = "${params.DOCKER_TAG}"  // The image tag now comes from the parameter
         KUBE_NAMESPACE = 'webapps'
         SCANNER_HOME= tool 'sonar-scanner'
@@ -17,25 +21,63 @@ pipeline {
     stages {
         stage('Git Checkout') {
             steps {
-                git branch: 'main', credentialsId: 'git-cred', url: 'https://github.com/jaiswaladi246/3-Tier-NodeJS-MySql-Docker.git'
+                git branch: 'main', credentialsId: 'git-cred', url: 'https://github.com/Sachin20010517/Production-Level-Blue-Green-Deployment-CICD.git'
             }
         }
         
-        stage('SonarQube Analysis') {
+        stage('Compile') {
             steps {
-                withSonarQubeEnv('sonar') {
-                    sh "$SCANNER_HOME/bin/sonar-scanner -Dsonar.projectKey=nodejsmysql -Dsonar.projectName=nodejsmysql"
-                }
+                sh 'mvn compile'
             }
         }
         
+        stage('Tests') {
+            steps {
+                sh 'mvn test -DskipTests=true'
+            }
+            //if there were any error, pipline wont be stoped, because we have used "-DskipTests=true"
+        }
+        
+       
         stage('Trivy FS Scan') {
             steps {
                 sh "trivy fs --format table -o fs.html ."
             }
         }
         
-        stage('Docker build') {
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('sonar') {
+                    sh "$SCANNER_HOME/bin/sonar-scanner -Dsonar.projectKey=blue-green-deployment-project -Dsonar.projectName=blue-green-deployment-project -Dsonar.java.binaries=target"
+                    //You can put anything for projectKey and projectName
+
+                }
+            }
+        }
+        
+        stage('Quality Gate Check') {
+            steps {
+                timeout(time: 1, unit: 'HOURS') {
+                    waitForQualityGate abortPipeline: false
+                }
+            }
+        }
+        
+        stage('Build') {
+            steps {
+                sh 'mvn package -DskipTests=true'
+            }
+        }
+        
+        stage('Publish Artifact To Nexus') {
+            steps {
+                withMaven(globalMavenSettingsConfig: 'maven-settings', jdk: '', maven: 'maven3', mavenSettingsConfig: '', traceability: true) {
+                    sh 'mvn deploy -DskipTests=true'
+                }
+            }
+        }
+        
+        stage('Docker build & Tag Image') {
             steps {
                 script {
                     withDockerRegistry(credentialsId: 'docker-cred') {
@@ -64,8 +106,10 @@ pipeline {
         stage('Deploy MySQL Deployment and Service') {
             steps {
                 script {
-                    withKubeConfig(caCertificate: '', clusterName: 'iam-sachin-cluster', contextName: '', credentialsId: 'k8-token', namespace: 'webapps', restrictKubeConfigAccess: false, serverUrl: 'https://46743932FDE6B34C74566F392E30CABA.gr7.ap-south-1.eks.amazonaws.com') {
+                    withKubeConfig(caCertificate: '', clusterName: 'iam-sachin-cluster', contextName: '', credentialsId: 'k8-token', namespace: 'webapps', restrictKubeConfigAccess: false, serverUrl: 'https://03E11B3EF4B50C2011F448351238F790.gr7.us-east-1.eks.amazonaws.com') {
                         sh "kubectl apply -f mysql-ds.yml -n ${KUBE_NAMESPACE}"  // Ensure you have the MySQL deployment YAML ready
+                        //Note! :- Make sure to change serverUrl of your K8s cluster. For that go to Amazon Elastic Kubernetes Service Dashboard > select the cluster > copy the "API server endpoint" 
+                        //After all, make sure to check whether k8s credentials ('k8-token') has been added the jenkins sever or not
                     }
                 }
             }
@@ -133,5 +177,11 @@ pipeline {
                 }
             }
         }
+        
+        
     }
+    
+  
+    
+   
 }
